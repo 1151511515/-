@@ -1,0 +1,162 @@
+!pip install chromedriver-autoinstaller
+!apt-get update
+!apt-get install -y chromium-browser
+
+!pip install selenium
+!apt-get update
+!apt-get install -y wget unzip
+!wget -N https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+!dpkg -i google-chrome-stable_current_amd64.deb
+!apt-get -f install -y
+!wget -N https://chromedriver.storage.googleapis.com/92.0.4515.107/chromedriver_linux64.zip
+!unzip chromedriver_linux64.zip
+!mv chromedriver /usr/local/bin/chromedriver
+!chmod 755 /usr/local/bin/chromedriver
+
+#책 리뷰 크롤링 하는 코드
+
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium import webdriver
+import time
+
+# 최신 버전의 ChromeDriver 설치
+import chromedriver_autoinstaller
+chromedriver_autoinstaller.install()
+
+# Selenium 설정
+chrome_options = Options()
+chrome_options.add_argument("--headless")  # Headless 모드 설정
+chrome_options.add_argument("--no-sandbox")
+chrome_options.add_argument("--disable-dev-shm-usage")
+chrome_options.add_argument('--disable-gpu')
+chrome_options.add_argument('--window-size=1920x1080')
+chrome_options.add_argument('--remote-debugging-port=9222')
+
+# 웹 드라이버 생성
+driver = webdriver.Chrome(options=chrome_options)
+
+# 교보문고 책 리뷰 페이지 URL
+url = 'https://product.kyobobook.co.kr/detail/S000001461135'  # 예시 URL, 실제 책 리뷰 페이지 URL로 변경
+
+# 웹 페이지 열기
+driver.get(url)
+
+try:
+    while True:
+        # 스크롤을 75% 정도 내리기
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight * 0.75);")
+        time.sleep(2)  # 페이지가 로드될 시간을 주기 위해 잠시 대기
+
+        # 리뷰 요소 찾기
+        reviews_xpath = '//*[@class="tab_content"]//*[@class="comment_list"]//*[@class="comment_item"]' #구매자
+        additional_reviews_xpath = '//*[@class="tab_content"]//*[@class="comment_list"]//*[@class="comment_item has_btn"]' #한달 리뷰 쓴 사람들
+
+        # 모든 리뷰 요소를 포함하는 리스트 생성
+        all_reviews = driver.find_elements(By.XPATH, reviews_xpath) + driver.find_elements(By.XPATH, additional_reviews_xpath)
+
+        # 리뷰 텍스트 추출 및 출력
+        for review in all_reviews:
+            review_text = review.text.strip()
+            if review_text:
+                print(review_text)
+
+        # 'next' 버튼 찾기
+        next_button = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, '//*[@id="ReviewList1"]/div[3]/div[2]/div/div[2]/button[2]'))
+        )
+        next_button.click()
+        time.sleep(2)  # 클릭 후 페이지가 로드될 시간을 주기 위해 잠시 대기
+
+except Exception as e:
+    print(f"Exception occurred: {str(e)}")
+
+# 웹 드라이버 종료
+driver.quit()
+
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium import webdriver
+from selenium.common.exceptions import TimeoutException
+import time
+from konlpy.tag import Okt
+from collections import Counter
+import re
+
+# 최신 버전의 ChromeDriver 설치
+import chromedriver_autoinstaller
+chromedriver_autoinstaller.install()
+
+# Selenium 설정
+chrome_options = Options()
+chrome_options.add_argument("--headless")  # Headless 모드 설정
+chrome_options.add_argument("--no-sandbox")
+chrome_options.add_argument("--disable-dev-shm-usage")
+chrome_options.add_argument('--disable-gpu')
+chrome_options.add_argument('--window-size=1920x1080')
+chrome_options.add_argument('--remote-debugging-port=9222')
+
+# 웹 드라이버 생성
+driver = webdriver.Chrome(options=chrome_options)
+
+# 교보문고 책 리뷰 페이지 URL
+url = 'https://product.kyobobook.co.kr/detail/S000001461135'  # 예시 URL, 실제 책 리뷰 페이지 URL로 변경
+
+# 웹 페이지 열기
+driver.get(url)
+
+review_list = []  # 리뷰 저장할 리스트
+
+try:
+    while True:
+        # 스크롤을 75% 정도 내리기
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight * 0.75);")
+        time.sleep(2)  # 페이지가 로드될 시간을 주기 위해 잠시 대기
+
+        # 리뷰 요소 찾기
+        reviews_xpath = '//*[@class="tab_content"]//*[@class="comment_list"]//*[@class="comment_item"]//*[@class="comment_text_box"]//*[@class="comment_text"]'
+
+        # 모든 리뷰 요소를 포함하는 리스트 생성
+        all_reviews = driver.find_elements(By.XPATH, reviews_xpath)
+
+        # 리뷰 텍스트 추출 및 저장
+        for review in all_reviews:
+            review_text = review.text.strip()
+            if review_text and '신고' not in review_text and '/' not in review_text and '한달' not in review_text:
+                review_list.append(review_text)
+            
+        # 'next' 버튼 찾기
+        try:
+            next_button = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.XPATH, '//*[@id="ReviewList1"]/div[3]/div[2]/div/div[2]/button[2]'))
+            )
+            next_button.click()
+            time.sleep(2)  # 클릭 후 페이지가 로드될 시간을 주기 위해 잠시 대기
+        except TimeoutException:
+            print("No more 'next' button found. Exiting loop.")
+            break
+
+except Exception as e:
+    print(f"Exception occurred: {str(e)}")
+
+# 웹 드라이버 종료
+driver.quit()
+
+# 불용어 처리를 위한 함수 정의
+def remove_stopwords(text):
+    stopwords = ['을', '를', '이', '가', '은', '는', '의', '에', '와', '과', '하다', '하는', '합니다', '할', '그', '되', '한', '등']
+    words = text.split()
+    result = [word for word in words if word not in stopwords]
+    return ' '.join(result)
+
+# 각 리뷰에 대해 불용어 처리 적용
+processed_reviews = [remove_stopwords(review) for review in review_list]
+
+# 결과 출력
+print("===== 전체 리뷰 =====")
+for review in processed_reviews:
+    print(review)
